@@ -18,6 +18,13 @@ Qualification des données pour cadrer les données entrantes dans le model.
 
 Pour lancer le projet, veuillez vous référencer au dépot suivant:  https://github.com/artefactory/supinfo_course_setup
 
+/!\ Lors du lancement des dockers, utiliser ces commandes: /!\
+```bash
+docker run -it --rm --user root -p 10000:8888 -p 8000:8000 -p 4200:4200 -p 8080:8080 -v ${PWD}/mlflow_server/local:/mlflow -e JUPYTER_ENABLE_LAB=yes -e JUPYTER_TOKEN=docker -e MLFLOW_TRACKING_URI=http://mlflow:5000 --network mlops-crashcourse --name jupyter -d mlops_notebooks
+
+docker run -it -d --rm -p 5001:5000 -v ${PWD}/mlflow_server/local:/mlflow --network mlops-crashcourse --name mlflow mlops_mlflow
+```
+
 # Lancer l'application:
 
 Une fois ce dépot cloné dans le docker `mlops_notebooks`, rendez-vous dans le terminal.
