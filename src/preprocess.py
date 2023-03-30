@@ -10,16 +10,21 @@ from prefect import task, flow
 
 @task(name='describe', tags=['preprocessing'])
 def describe(df: pd.DataFrame) -> pd.DataFrame:
+    # get the number of rows in the DataFrame
     nrows = len(df)
+    
+    # create an empty DataFrame to hold the descriptive statistics
     df_ret = pd.DataFrame()
+    
+    # add the column names and data types to the DataFrame
     df_ret['feature'] = df.columns
     df_ret['dtype'] = df.dtypes.values
 
-    # null
+    # add the number of null and non-null values for each column
     df_ret['null_count'] = df.isnull().sum().values
     df_ret['non_null_count'] = df.notnull().sum().values
 
-    # numeric features
+    # add the maximum, minimum, mean, median, and standard deviation of numeric features
     numeric = df.select_dtypes(['int8', 'int16', 'int32', 'int64', 'float16', 'float32', 'float64'])
     df_ret['max'] = df_ret['feature'].map(numeric.max())
     df_ret['min'] = df_ret['feature'].map(numeric.min())
@@ -27,6 +32,7 @@ def describe(df: pd.DataFrame) -> pd.DataFrame:
     df_ret['median'] = df_ret['feature'].map(numeric.median())
     df_ret['std'] = df_ret['feature'].map(numeric.std())
 
+    # add the number of unique values, top value, top 5 values, and top value ratio for each column
     for col in df.columns:
         val_counts = df[col].value_counts(dropna=False)
         top_vals = val_counts.index.tolist()
@@ -34,20 +40,31 @@ def describe(df: pd.DataFrame) -> pd.DataFrame:
         df_ret.loc[df_ret['feature'] == col, 'top_value'] = top_vals[0]
         df_ret.loc[df_ret['feature'] == col, 'top5_values'] = ', '.join(map(lambda x: str(x), top_vals[:5]))
         df_ret.loc[df_ret['feature'] == col, 'top_value_ratio'] = val_counts.values[0] / nrows
-
+        
+    # add a column indicating whether the column has all distinct values
     df_ret['distinct'] = (df_ret['unique_count'] == nrows).astype(int)
 
+    # return the descriptive statistics DataFrame
     return df_ret
 
 @task(name='reduce_mem_usage', tags=['preprocessing'])
 def reduce_mem_usage(df: pd.DataFrame, verbose: bool =True) -> None:
+    # create a list of numeric data type
     numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+    
+    # get the starting memory usage of the DataFrame
     start_mem = df.memory_usage().sum() / 1024**2
+    
+    # iterate over each column in the DataFrame
     for col in df.columns:
         col_type = df[col].dtypes
+        
+        # check if the column data type is numeric
         if col_type in numerics:
             c_min = df[col].min()
             c_max = df[col].max()
+            
+            # check if the column is an integer type
             if str(col_type).startswith('int'):
                 if c_min > np.iinfo(np.int8).min and c_max < np.iinfo(np.int8).max:
                     df[col] = df[col].astype(np.int8)
@@ -71,6 +88,7 @@ def reduce_mem_usage(df: pd.DataFrame, verbose: bool =True) -> None:
 @task(name='preprocess', tags=['preprocessing'])
 def preprocess(train: list, test: list) -> None:
     cols_to_drop = ['Cabin', 'Name', 'PassengerId', 'Ticket']
+    # drop unnecessary columns
     train.drop(cols_to_drop, axis=1, inplace=True)
     test.drop(cols_to_drop, axis=1, inplace=True)
 
@@ -78,6 +96,7 @@ def preprocess(train: list, test: list) -> None:
     train['Embarked'] = train['Embarked'].fillna('Unknown')
     test['Embarked'] = test['Embarked'].fillna('Unknown')
 
+    # merge train and test data to impute missing values
     merged = pd.concat((train, test), axis=0).reset_index(drop=True)
 
     # impute numerical columns
