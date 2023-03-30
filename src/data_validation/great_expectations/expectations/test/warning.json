@@ -1,0 +1,21 @@
+{
+  "data_asset_type": null,
+  "expectation_suite_name": "test.warning",
+  "expectations": [],
+  "ge_cloud_id": null,
+  "meta": {
+    "citations": [
+      {
+        "batch_request": {
+          "data_asset_name": "test",
+          "data_connector_name": "parquet_data_connector",
+          "datasource_name": "titanic_dataset",
+          "limit": 1000
+        },
+        "citation_date": "2023-03-30T11:23:51.949323Z",
+        "comment": "Created suite added via CLI"
+      }
+    ],
+    "great_expectations_version": "0.16.3"
+  }
+}

@@ -1,16 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
+
+from prefect import task, flow
 
 sns.set()
 
 DPI = 300
 
-
-def label_share(share, fp):
+@task(name='label_share', tags=['plots_func'])
+def label_share(share: pd.Series, fp: str) -> None:
     share_norm = share / share.sum()
     fig, ax = plt.subplots()
-    bar = sns.barplot(share_norm.index, share_norm.values)
+    bar = sns.barplot(x=share_norm.index, y=share_norm.values)
     for idx, p in enumerate(bar.patches):
         bar.annotate('{:.2f}\n({})'.format(share_norm[idx], share[idx]),
                      (p.get_x() + p.get_width() / 2, p.get_height() / 2),
@@ -22,8 +25,8 @@ def label_share(share, fp):
     fig.savefig(fp, dpi=DPI)
     plt.close(fig)
 
-
-def corr_matrix(corr, fp):
+@task(name='corr_matrix', tags=['plots_func'])
+def corr_matrix(corr: pd.DataFrame, fp: str) -> None:
     fig, ax = plt.subplots()
     mask = np.zeros_like(corr, dtype=np.bool)
     mask[np.triu_indices_from(mask, k=1)] = True
@@ -35,8 +38,8 @@ def corr_matrix(corr, fp):
     fig.savefig(fp, dpi=DPI)
     plt.close(fig)
 
-
-def confusion_matrix(cm, fp, norm_axis=1):
+@task(name='confusion_matrix', tags=['plots_func'])
+def confusion_matrix(cm: np.array, fp: str, norm_axis: int =1) -> None:
     """
     [TN, FP]
     [FN, TP]
@@ -62,8 +65,8 @@ def confusion_matrix(cm, fp, norm_axis=1):
     fig.savefig(fp, dpi=DPI)
     plt.close(fig)
 
-
-def metric(metrics, fp):
+@task(name='metric', tags=['plots_func'])
+def metric(metrics: np.array, fp: str) -> None:
     fig, ax = plt.subplots()
     for idx, data in enumerate(metrics):
         line = ax.plot(data['values'], label='fold{}'.format(idx), zorder=1)[0]
@@ -77,8 +80,8 @@ def metric(metrics, fp):
     fig.savefig(fp, dpi=DPI)
     plt.close(fig)
 
-
-def feature_importance(features, feature_importances, title, fp):
+@task(name='feature_importance', tags=['plots_func'])
+def feature_importance(features: np.array, feature_importances: np.array, title: str, fp: str) -> None:
     fig, ax = plt.subplots()
     idxes = np.argsort(feature_importances)[::-1]
     y = np.arange(len(feature_importances))
@@ -92,8 +95,8 @@ def feature_importance(features, feature_importances, title, fp):
     fig.savefig(fp, dpi=DPI)
     plt.close(fig)
 
-
-def scores(scores, fp):
+@task(name='scores', tags=['plots_func'])
+def scores(scores: dict, fp: str) -> None:
     array = np.array([v for v in scores.values()]).reshape((2, 2))
     annot = np.array(['{}: {:.3f}'.format(k, v) for k, v in scores.items()]).reshape((2, 2))
     fig, ax = plt.subplots()
@@ -108,8 +111,8 @@ def scores(scores, fp):
     fig.savefig(fp, dpi=DPI)
     plt.close(fig)
 
-
-def roc_curve(fpr, tpr, auc, fp):
+@task(name='roc_curve', tags=['plots_func'])
+def roc_curve(fpr: np.array, tpr: np.array, auc: float, fp: str) -> None:
     fig, ax = plt.subplots()
     ax.plot(fpr, tpr)
     ax.plot([0, 1], [0, 1], 'k:')
@@ -120,8 +123,8 @@ def roc_curve(fpr, tpr, auc, fp):
     fig.savefig(fp, dpi=DPI)
     plt.close(fig)
 
-
-def pr_curve(pre, rec, auc, fp):
+@task(name='pr_curve', tags=['plots_func'])
+def pr_curve(pre: np.array, rec: np.array, auc: float, fp: str) -> None:
     fig, ax = plt.subplots()
     ax.plot(pre, rec)
     ax.set_xlabel('Recall')

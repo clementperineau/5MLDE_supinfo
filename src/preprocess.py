@@ -2,14 +2,14 @@ import os
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 import numpy as np
 import pandas as pd
-from config import TRAIN_PATH, TEST_PATH, PROCESSED_TRAIN_PATH, PROCESSED_TEST_PATH
+from sklearn.model_selection import train_test_split
+from utils import load_csv
+from config import PROCESSED_TRAIN_PATH, PROCESSED_TEST_PATH, TRAIN_PATH, TEST_PATH
 
+from prefect import task, flow
 
-def replace_ext(fp, ext):
-    return os.path.splitext(fp)[0] + (ext if ext.startswith(ext) else f'.{ext}')
-
-
-def describe(df):
+@task(name='describe', tags=['preprocessing'])
+def describe(df: pd.DataFrame) -> pd.DataFrame:
     nrows = len(df)
     df_ret = pd.DataFrame()
     df_ret['feature'] = df.columns
@@ -39,8 +39,8 @@ def describe(df):
 
     return df_ret
 
-
-def reduce_mem_usage(df, verbose=True):
+@task(name='reduce_mem_usage', tags=['preprocessing'])
+def reduce_mem_usage(df: pd.DataFrame, verbose: bool =True) -> None:
     numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
     start_mem = df.memory_usage().sum() / 1024**2
     for col in df.columns:
@@ -68,8 +68,8 @@ def reduce_mem_usage(df, verbose=True):
     end_mem = df.memory_usage().sum() / 1024**2
     if verbose: print('Memory usage decreased to {:.2f} Mb ({:.1f}% reduction)'.format(end_mem, 100 * (start_mem - end_mem) / start_mem))
 
-
-def preprocess(train, test):
+@task(name='preprocess', tags=['preprocessing'])
+def preprocess(train: list, test: list) -> None:
     cols_to_drop = ['Cabin', 'Name', 'PassengerId', 'Ticket']
     train.drop(cols_to_drop, axis=1, inplace=True)
     test.drop(cols_to_drop, axis=1, inplace=True)
@@ -108,19 +108,9 @@ def preprocess(train, test):
             ohe_array = ohe.transform(test[[col]]).toarray().astype(int)
             test[new_cols] = pd.DataFrame(ohe_array)
             test.pop(col)
-
-            # normal label encoding
-            # le = LabelEncoder()
-            # le.fit(list(train[col].astype(str).values) + list(test[col].astype(str).values))
-            # train[col] = le.transform(train[col].astype(str).values)
-            # test[col] = le.transform(test[col].astype(str).values)
-
-            # count encoding
-            # train[col + '_freq'] = train[col].map(merged[col].value_counts(dropna=False))
-            # test[col + '_freq'] = test[col].map(merged[col].value_counts(dropna=False))
-
-
-def main():
+            
+@flow(name="Preprocessing", retries=1, retry_delay_seconds=30)
+def main() -> None:
     train = pd.read_csv(TRAIN_PATH)
     test = pd.read_csv(TEST_PATH)
 

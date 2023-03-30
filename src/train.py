@@ -4,6 +4,7 @@ import os
 import warnings
 import pickle
 from collections import defaultdict
+from typing import Callable, Any
 
 import numpy as np
 import pandas as pd
@@ -24,12 +25,14 @@ import plot_funcs as pf
 from utils import print_devider
 from config import PROCESSED_TRAIN_PATH
 
+from prefect import task, flow
 
-def devide_by_sum(x):
+@task(name='devide_by_sum', tags=['train'])
+def devide_by_sum(x: float) -> float:
     return x / x.sum()
 
-
-def get_scores(y_true, y_pred):
+@task(name='get_scores', tags=['train'])
+def get_scores(y_true: list, y_pred: list) -> dict:
     return {
       'accuracy': accuracy_score(y_true, y_pred),
       'precision': precision_score(y_true, y_pred),
@@ -37,8 +40,8 @@ def get_scores(y_true, y_pred):
       'f1': f1_score(y_true, y_pred),
     }
 
-
-def log_plot(args, plot_func, fp):
+@flow(name='log_plot')
+def log_plot(args: Any, plot_func: Callable, fp: str) -> None:
     if not isinstance(args, (tuple)):
         args = (args,)
 
@@ -47,8 +50,8 @@ def log_plot(args, plot_func, fp):
     os.remove(fp)
     print(f'Logged {fp}')
 
-
-def train_model(X, y, params, exp_path):
+@flow(name='train_model')
+def train_model(X, y, params: dict, exp_path: str) -> tuple[str, str]:
     fold_params = params['fold']
     model_params = params['model']
     fit_params = params['fit']
@@ -165,10 +168,10 @@ def train_model(X, y, params, exp_path):
             mlflow.log_param('model_path', os.path.join(run.info.artifact_uri, models_path))
             os.remove(models_path)
 
-    return run.info.experiment_id, run.info.run_uuid
+    return run.info.experiment_id, run.info.run_id
 
-
-def main():
+@flow(name="Training", retries=1, retry_delay_seconds=30)
+def main() -> None:
     warnings.filterwarnings('ignore')
 
     print(os.listdir('data'))
@@ -202,10 +205,6 @@ def main():
     }
 
     experiment_id, run_uuid = train_model(X, y, params, 'titanic')
-    print_devider('MLflow UI')
-    print('Run URL: http://127.0.0.1:5000/#/experiments/{0}/runs/{1}\n'
-          .format(experiment_id, run_uuid))
-    os.system('mlflow ui')
 
 
 if __name__ == '__main__':
