@@ -27,12 +27,15 @@ from config import PROCESSED_TRAIN_PATH
 
 from prefect import task, flow
 
+# Serializing the provided object and saving it to the specified file path
 @task(name='devide_by_sum', tags=['train'])
 def devide_by_sum(x: float) -> float:
     return x / x.sum()
 
+# Task to calculate evaluation scores for a classification model
 @task(name='get_scores', tags=['train'])
 def get_scores(y_true: list, y_pred: list) -> dict:
+    # Calculate and return the evaluation scores
     return {
       'accuracy': accuracy_score(y_true, y_pred),
       'precision': precision_score(y_true, y_pred),
@@ -40,6 +43,7 @@ def get_scores(y_true: list, y_pred: list) -> dict:
       'f1': f1_score(y_true, y_pred),
     }
 
+# A function that logs a plot and deletes the local file.
 @flow(name='log_plot')
 def log_plot(args: Any, plot_func: Callable, fp: str) -> None:
     if not isinstance(args, (tuple)):
@@ -52,6 +56,18 @@ def log_plot(args: Any, plot_func: Callable, fp: str) -> None:
 
 @flow(name='train_model')
 def train_model(X, y, params: dict, exp_path: str) -> tuple[str, str]:
+    """
+    A function that trains a machine learning model and logs various artifacts using MLflow.
+
+    Parameters:
+    X (pandas.DataFrame): The input features.
+    y (pandas.Series): The target variable.
+    params (dict): The hyperparameters to use for training the model.
+    exp_path (str): The path of the experiment to log artifacts to.
+
+    Returns:
+    tuple[str, str]: A tuple containing the experiment ID and run ID of the MLflow run.
+    """
     fold_params = params['fold']
     model_params = params['model']
     fit_params = params['fit']

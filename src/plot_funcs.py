@@ -5,28 +5,35 @@ import pandas as pd
 
 from prefect import task, flow
 
-sns.set()
+sns.set() # set seaborn style
 
-DPI = 300
+DPI = 300 # set DPI value for the generated figures
 
-@task(name='label_share', tags=['plots_func'])
+@task(name='label_share', tags=['plots_func']) # create a task named label_share and tag it with 'plots_func'
 def label_share(share: pd.Series, fp: str) -> None:
+    # Compute the normalized share of each label
     share_norm = share / share.sum()
+    # Create a bar plot with seaborn
     fig, ax = plt.subplots()
     bar = sns.barplot(x=share_norm.index, y=share_norm.values)
+    # Add annotations to each bar of the plot with the share and the normalized share
     for idx, p in enumerate(bar.patches):
         bar.annotate('{:.2f}\n({})'.format(share_norm[idx], share[idx]),
                      (p.get_x() + p.get_width() / 2, p.get_height() / 2),
                      ha='center', va='center', color='white', fontsize='large')
+                     
+    # Set the x and y labels of the plot, as well as the title, and adjust the layout
     ax.set_xlabel('Label')
     ax.set_ylabel('Share')
     ax.set_title('Label Share')
     fig.tight_layout()
+    # Save the plot to a file and close it
     fig.savefig(fp, dpi=DPI)
     plt.close(fig)
 
-@task(name='corr_matrix', tags=['plots_func'])
+@task(name='corr_matrix', tags=['plots_func']) # create a task named corr_matrix and tag it with 'plots_func'
 def corr_matrix(corr: pd.DataFrame, fp: str) -> None:
+    # Create a correlation matrix plot with seaborn
     fig, ax = plt.subplots()
     mask = np.zeros_like(corr, dtype=np.bool)
     mask[np.triu_indices_from(mask, k=1)] = True
@@ -38,21 +45,24 @@ def corr_matrix(corr: pd.DataFrame, fp: str) -> None:
     fig.savefig(fp, dpi=DPI)
     plt.close(fig)
 
-@task(name='confusion_matrix', tags=['plots_func'])
+@task(name='confusion_matrix', tags=['plots_func']) # create a task named confusion_matrix and tag it with 'plots_func'
 def confusion_matrix(cm: np.array, fp: str, norm_axis: int =1) -> None:
     """
     [TN, FP]
     [FN, TP]
     """
-
+    # Normalize the confusion matrix by either the rows or the columns
     cm_norm = cm / cm.sum(axis=norm_axis, keepdims=True)
+    # Extract the values of the confusion matrix and the normalized confusion matrix
     TN, FP, FN, TP = cm.ravel()
     TN_norm, FP_norm, FN_norm, TP_norm = cm_norm.ravel()
+    # Create an array of annotations for each cell of the confusion matrix
     annot = np.array([
         [f'TN: {TN}\n({TN_norm:.3f})', f'FP: {FP}\n({FP_norm:.3f})'],
         [f'FN: {FN}\n({FN_norm:.3f})', f'TP: {TP}\n({TP_norm:.3f})']
     ])
 
+    # Create a heatmap of the confusion matrix with seaborn
     fig, ax = plt.subplots()
     sns.heatmap(cm_norm, cmap='Blues', vmin=0, vmax=1,
                 annot=annot, fmt='s', annot_kws={'fontsize': 'large'},
